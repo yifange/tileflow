@@ -1,9 +1,9 @@
 import sys
+import math
 from PySide import QtCore, QtGui, QtOpenGL
 
 try:
-    from OpenGL.GL import *
-    from OpenGL import GLU
+    from OpenGL import GLU, GL
 except ImportError:
     app = QtGui.QApplication(sys.argv)
     QtGui.QMessageBox.critical(None, "OpenGL textures",
@@ -61,25 +61,21 @@ class TileflowWidget(QtOpenGL.QGLWidget):
         self.texturesBuffer = TileflowWidget.GTextures
 
     def paintGL(self):
-        glMatrixMode(GL_MODELVIEW)
-        glLoadIdentity()
+        GL.glMatrixMode(GL.GL_MODELVIEW)
+        GL.glLoadIdentity()
         GLU.gluLookAt(0, 0, 2, 0, 0, 0, 0, 1, 0)
-        glDisable(GL_DEPTH_TEST)
+        GL.glDisable(GL.GL_DEPTH_TEST)
 
-        glClearColor(0, 0, 0, 0)
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
+        GL.glClearColor(0, 0, 0, 0)
+        GL.glClear(GL.GL_COLOR_BUFFER_BIT | GL.GL_DEPTH_BUFFER_BIT)
 
-
-
-
-
-        glPushMatrix()
-        glEnable(GL_TEXTURE_2D)
-        glEnable(GL_BLEND)
-        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+        GL.glPushMatrix()
+        GL.glEnable(GL.GL_TEXTURE_2D)
+        GL.glEnable(GL.GL_BLEND)
+        GL.glBlendFunc(GL.GL_SRC_ALPHA, GL.GL_ONE_MINUS_SRC_ALPHA)
         # offset = self.offset
-        offset = 3
-        mid = 3
+        offset = 4
+        mid = int(math.floor(offset + 0.5))
         # startPos = mid - VISIBLE_TILES
         # if startPos < 0:
         #     startPos = 0
@@ -89,7 +85,7 @@ class TileflowWidget(QtOpenGL.QGLWidget):
         for i in range(5, mid - 1, -1):
             self.drawTile(i, i - offset, self.tiles[i])
 
-        glPopMatrix()
+        GL.glPopMatrix()
 
 
     def resizeGL(self, width, height):
@@ -97,12 +93,12 @@ class TileflowWidget(QtOpenGL.QGLWidget):
         imagew = width * 0.45 / TileflowWidget.SCALE / 2.0
         imageh = height * 0.45 / TileflowWidget.SCALE / 2.0
 
-        glViewport(0, 0, width, height)
+        GL.glViewport(0, 0, width, height)
         ratio = float(width) / height
         print ratio
-        glMatrixMode(GL_PROJECTION)
-        glLoadIdentity()
-        glOrtho(-ratio * TileflowWidget.SCALE, ratio * TileflowWidget.SCALE, -1 * TileflowWidget.SCALE, 1 * TileflowWidget.SCALE, 1, 3)
+        GL.glMatrixMode(GL.GL_PROJECTION)
+        GL.glLoadIdentity()
+        GL.glOrtho(-ratio * TileflowWidget.SCALE, ratio * TileflowWidget.SCALE, -1 * TileflowWidget.SCALE, 1 * TileflowWidget.SCALE, 1, 3)
         self.verticesBuffer = [
             -ratio * TileflowWidget.SCALE, -TileflowWidget.SCALE, 0,
             ratio * TileflowWidget.SCALE, -TileflowWidget.SCALE, 0,
@@ -139,39 +135,39 @@ class TileflowWidget(QtOpenGL.QGLWidget):
         sc = 0.38 * matrix[0]
         trans += f * 1
 
-        glPushMatrix()
-        glBindTexture(GL_TEXTURE_2D, tile.texture)
-        glTranslatef(trans, 0, 0)
-        glScalef(sc, sc, 1.0)
-        glMultMatrixf(matrix)
+        GL.glPushMatrix()
+        GL.glBindTexture(GL.GL_TEXTURE_2D, tile.texture)
+        GL.glTranslatef(trans, 0, 0)
+        GL.glScalef(sc, sc, 1.0)
+        GL.glMultMatrixf(matrix)
 
-        glBegin(GL_QUADS)
-        glTexCoord2d(1, 0)
-        glVertex3d(1, -1, 0)
-        glTexCoord2d(0, 0)
-        glVertex3d(-1, -1, 0)
-        glTexCoord2d(0, 1)
-        glVertex3d(-1, 1, 0)
-        glTexCoord2d(1, 1)
-        glVertex3d(1, 1, 0)
-        glEnd()
-        # glDrawArrays(GL_TRIANGLE_STRIP, 0, 4)
-        glTranslatef(0, -2.0, 0)
-        glScalef(1, -1, 1)
-        glColor4f(1, 1, 1, 0.5)
-        glBegin(GL_QUADS)
-        glTexCoord2d(1, 0)
-        glVertex3d(1, -1, 0)
-        glTexCoord2d(0, 0)
-        glVertex3d(-1, -1, 0)
-        glTexCoord2d(0, 1)
-        glVertex3d(-1, 1, 0)
-        glTexCoord2d(1, 1)
-        glVertex3d(1, 1, 0)
-        glEnd()
-        glColor4f(1, 1, 1, 1)
+        GL.glBegin(GL.GL_QUADS)
+        GL.glTexCoord2d(1, 0)
+        GL.glVertex3d(1, -1, 0)
+        GL.glTexCoord2d(0, 0)
+        GL.glVertex3d(-1, -1, 0)
+        GL.glTexCoord2d(0, 1)
+        GL.glVertex3d(-1, 1, 0)
+        GL.glTexCoord2d(1, 1)
+        GL.glVertex3d(1, 1, 0)
+        GL.glEnd()
 
-        glPopMatrix()
+        GL.glTranslatef(0, -2.0, 0)
+        GL.glScalef(1, -1, 1)
+        GL.glColor4f(1, 1, 1, 0.5)
+        GL.glBegin(GL.GL_QUADS)
+        GL.glTexCoord2d(1, 0)
+        GL.glVertex3d(1, -1, 0)
+        GL.glTexCoord2d(0, 0)
+        GL.glVertex3d(-1, -1, 0)
+        GL.glTexCoord2d(0, 1)
+        GL.glVertex3d(-1, 1, 0)
+        GL.glTexCoord2d(1, 1)
+        GL.glVertex3d(1, 1, 0)
+        GL.glEnd()
+        GL.glColor4f(1, 1, 1, 1)
+
+        GL.glPopMatrix()
 
 class Tile:
     def __init__(self, texture):
