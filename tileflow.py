@@ -31,7 +31,6 @@ class TileflowWidget(QtOpenGL.QGLWidget):
     FLANK_SPREAD = 0.4
     VISIBLE_TILES = 3
 
-    clicked = QtCore.Signal()
 
     def __init__(self, parent):
         QtOpenGL.QGLWidget.__init__(self, parent)
@@ -41,7 +40,9 @@ class TileflowWidget(QtOpenGL.QGLWidget):
         self.clearColor = QtGui.QColor()
         self.lastPos = QtCore.QPoint()
         self.tiles = []
-
+        self.max = 6
+        self.offset = 3
+        self.mWidth = 533
 
     def minimumSizeHint(self):
         return QtCore.QSize(533, 270)
@@ -74,7 +75,11 @@ class TileflowWidget(QtOpenGL.QGLWidget):
         GL.glEnable(GL.GL_BLEND)
         GL.glBlendFunc(GL.GL_SRC_ALPHA, GL.GL_ONE_MINUS_SRC_ALPHA)
         # offset = self.offset
-        offset = 4
+        offset = self.offset
+        if offset <= 0:
+            offset = 0
+        if offset > 5:
+            offset = 5
         mid = int(math.floor(offset + 0.5))
         # startPos = mid - VISIBLE_TILES
         # if startPos < 0:
@@ -113,13 +118,15 @@ class TileflowWidget(QtOpenGL.QGLWidget):
 
     def mouseMoveEvent(self, event):
         dx = event.x() - self.lastPos.x()
-        dy = event.y() - self.lastPos.y()
-
+        print dx
+        if event.buttons() & QtCore.Qt.LeftButton:
+            self.offset += float(dx) * 6 / self.mWidth
+            self.updateGL()
 
         self.lastPos = QtCore.QPoint(event.pos())
 
     def mouseReleaseEvent(self, event):
-        self.clicked.emit()
+        pass
 
     def drawTile(self, position, off, tile):
         matrix = [1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0]
@@ -129,7 +136,7 @@ class TileflowWidget(QtOpenGL.QGLWidget):
             f = TileflowWidget.FLANK_SPREAD
         elif (f < -TileflowWidget.FLANK_SPREAD):
             f = -TileflowWidget.FLANK_SPREAD
-        print f
+
         matrix[3] = -f
         matrix[0] = 1 - abs(f)
         sc = 0.38 * matrix[0]
@@ -183,8 +190,6 @@ class Window(QtGui.QWidget):
         mainLayout.addWidget(self.glWidget)
         self.setLayout(mainLayout)
         self.setWindowTitle(self.tr("Tileflow"))
-
-
 
 if __name__ == "__main__":
     app = QtGui.QApplication(sys.argv)
