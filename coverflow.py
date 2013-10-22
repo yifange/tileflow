@@ -11,9 +11,7 @@ except ImportError:
                             QtGui.QMessageBox.NoButton)
     sys.exit(1)
 
-class GLWidget(QtOpenGL.QGLWidget):
-    sharedObject = 0
-    refCount = 0
+class TileflowWidget(QtOpenGL.QGLWidget):
 
     coords = (
         ( ( +1, -1, -1 ), ( -1, -1, -1 ), ( -1, +1, -1 ), ( +1, +1, -1 ) ),
@@ -23,24 +21,30 @@ class GLWidget(QtOpenGL.QGLWidget):
         ( ( +1, -1, +1 ), ( -1, -1, +1 ), ( -1, -1, -1 ), ( +1, -1, -1 ) ),
         ( ( -1, -1, +1 ), ( +1, -1, +1 ), ( +1, +1, +1 ), ( -1, +1, +1 ) )
     )
+    SCALE = 0.7
+    SPREAD_IMAGE = 0.14
+    FLANK_SPREAD = 0.4
+    VISIBLE_TILES = 3
 
     clicked = QtCore.Signal()
 
-    def __init__(self, parent, shareWidget):
-        QtOpenGL.QGLWidget.__init__(self, parent, shareWidget)
+    def __init__(self, parent):
+        QtOpenGL.QGLWidget.__init__(self, parent)
 
         # self.clearColor = QtCore.Qt.black
         self.xRot = 0
         self.yRot = 0
         self.zRot = 0
+        self.mWidth = 0
         self.clearColor = QtGui.QColor()
         self.lastPos = QtCore.QPoint()
+        self.obj = None
 
-    def freeGLResources(self):
-        GLWidget.refCount -= 1
-        if GLWidget.refCount == 0:
-            self.makeCurrent()
-            glDeleteLists(self.__class__.sharedObject, 1)
+    # def freeGLResources(self):
+    #     TileflowWidget.refCount -= 1
+    #     if TileflowWidget.refCount == 0:
+    #         self.makeCurrent()
+    #         glDeleteLists(self.__class__.obj, 1)
 
     def minimumSizeHint(self):
         return QtCore.QSize(50, 50)
@@ -59,13 +63,11 @@ class GLWidget(QtOpenGL.QGLWidget):
         self.updateGL()
 
     def initializeGL(self):
-        if not GLWidget.sharedObject:
-            self.textures = []
+        if not self.obj:
+            self.tiles = []
             for i in range(6):
-                self.textures.append(self.bindTexture(QtGui.QPixmap("images/side%d.png" % (i + 1))))
-            print self.textures
-            GLWidget.sharedObject = self.makeObject()
-        GLWidget.refCount += 1
+                self.tiles.append(Tile(self.bindTexture(QtGui.QPixmap("images/side%d.png" % (i + 1)))))
+            self.obj = self.makeObject()
 
         glEnable(GL_DEPTH_TEST)
         glEnable(GL_CULL_FACE)
@@ -79,16 +81,19 @@ class GLWidget(QtOpenGL.QGLWidget):
         glRotated(self.xRot / 16.0, 1.0, 0.0, 0.0)
         glRotated(self.yRot / 16.0, 0.0, 1.0, 0.0)
         glRotated(self.zRot / 16.0, 0.0, 0.0, 1.0)
-        glCallList(GLWidget.sharedObject)
+        glCallList(self.obj)
 
     def resizeGL(self, width, height):
-        side = min(width, height)
-        glViewport((width - side) / 2, (height - side) / 2, side, side)
+        mWidth = width
+        imagew = width * 0.45 / TileflowWidget.SCALE / 2.0
+        imageh = height * 0.45 / TileflowWidget.SCALE / 2.0
 
+        glViewport(0, 0, width, height)
+        ratio = width / height
         glMatrixMode(GL_PROJECTION)
         glLoadIdentity()
-        glOrtho(-0.5, +0.5, +0.5, -0.5, 4.0, 15.0)
-        glMatrixMode(GL_MODELVIEW)
+        glOrtho(-ratio * TileflowWidget.SCALE, ratio * TileflowWidget.SCALE, -1 * TileflowWidget.SCALE, 1 * TileflowWidget.SCALE, 1, 3)
+        # glMatrixMode(GL_MODELVIEW)
 
     def mousePressEvent(self, event):
         self.lastPos = QtCore.QPoint(event.pos())
@@ -110,71 +115,67 @@ class GLWidget(QtOpenGL.QGLWidget):
     def makeObject(self):
         dlist = glGenLists(1)
         glNewList(dlist, GL_COMPILE)
+        offset = 3
+        mid = 3
+        # startPos = mid - VISIBLE_TILES
+        # if startPos < 0:
+        #     startPos = 0
 
-        for i in range(6):
-            glBindTexture(GL_TEXTURE_2D, self.textures[i])
-
-            glBegin(GL_QUADS)
-            for j in range(4):
-                tx = {False: 0, True: 1}[j == 0 or j == 3]
-                ty = {False: 0, True: 1}[j == 0 or j == 1]
-                glTexCoord2d(tx, ty)
-                glVertex3d(0.2 * GLWidget.coords[i][j][0],
-                           0.2 * GLWidget.coords[i][j][1],
-                           0.2 * GLWidget.coords[i][j][2])
-
-            glEnd()
-
+        for i in range(0, mid):
+            self.drawTile(i, i - offset, self.tiles[i])
+        for i in range(5, mid, -1):
+            self.drawTile(i, i - offset, self.tiles[i])
+        # for i in range(6):
+        #     self.drawTile(i, 0, self.tiles[i])
         glEndList()
         return dlist
 
+    def drawTile(self, position, off, tile):
+        matrix = [1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0]
+        trans = off * TileflowWidget.SPREAD_IMAGE
+        f = off * TileflowWidget.FLANK_SPREAD
+        if (f > TileflowWidget.FLANK_SPREAD):
+            f = TileflowWidget.FLANK_SPREAD
+        elif (f < -TileflowWidget.FLANK_SPREAD):
+            f = -TileflowWidget.FLANK_SPREAD
+        print f
+        matrix[3] = -f
+        matrix[0] = 1 - abs(f)
+        sc = 0.38 * matrix[0]
+        trans += f * 1
+
+        print matrix
+        glPushMatrix()
+        glBindTexture(GL_TEXTURE_2D, tile.texture)
+
+        glTranslatef(trans, 0, 0)
+        glScalef(sc, sc, 1.0)
+        glMultMatrixf(matrix)
+        glDrawArrays(GL_TRIANGLE_STRIP, 0, 4)
+
+        glTranslatef(0, -2, 0)
+        glScalef(1, -1, 1)
+        glColor4f(1, 1, 1, 0.5)
+        glDrawArrays(GL_TRIANGLE_STRIP, 0, 4)
+        glColor4f(1, 1, 1, 1)
+
+        glPopMatrix()
+
+class Tile:
+    def __init__(self, texture):
+        self.texture = texture
 
 class Window(QtGui.QWidget):
-    NumRows = 2
-    NumColumns = 3
 
     def __init__(self, parent=None):
         QtGui.QWidget.__init__(self, parent)
 
-        mainLayout = QtGui.QGridLayout()
-        self.glWidgets = []
-
-        for i in range(Window.NumRows):
-            self.glWidgets.append([])
-            for j in range(Window.NumColumns):
-                self.glWidgets[i].append(None)
-
-        for i in range(Window.NumRows):
-            for j in range(Window.NumColumns):
-                clearColor = QtGui.QColor()
-                clearColor.setHsv(((i * Window.NumColumns) + j) * 255
-                                  / (Window.NumRows * Window.NumColumns - 1),
-                                  255, 63)
-
-                self.glWidgets[i][j] = GLWidget(self, self.glWidgets[0][0])
-                self.glWidgets[i][j].setClearColor(clearColor)
-                self.glWidgets[i][j].rotateBy(+42 * 16, +42 * 16, -21 * 16)
-                mainLayout.addWidget(self.glWidgets[i][j], i, j)
-
-                self.glWidgets[i][j].clicked.connect(self.setCurrentGlWidget)
-                QtGui.qApp.lastWindowClosed.connect(self.glWidgets[i][j].freeGLResources)
-
+        mainLayout = QtGui.QHBoxLayout()
+        self.glWidget = TileflowWidget(self)
+        mainLayout.addWidget(self.glWidget)
         self.setLayout(mainLayout)
+        self.setWindowTitle(self.tr("Tileflow"))
 
-        self.currentGlWidget = self.glWidgets[0][0]
-
-        timer = QtCore.QTimer(self)
-        timer.timeout.connect(self.rotateOneStep)
-        timer.start(20)
-
-        self.setWindowTitle(self.tr("Textures"))
-
-    def setCurrentGlWidget(self):
-        self.currentGlWidget = self.sender()
-
-    def rotateOneStep(self):
-        if self.currentGlWidget:
-            self.currentGlWidget.rotateBy(+2 * 16, +2 * 16, -1 * 16)
 
 
 if __name__ == "__main__":
