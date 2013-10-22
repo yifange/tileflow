@@ -1,30 +1,20 @@
-#!/usr/bin/env python
-
 import sys
-import math
 from PySide import QtCore, QtGui, QtOpenGL
+
 try:
     from OpenGL.GL import *
 except ImportError:
     app = QtGui.QApplication(sys.argv)
-    QtGui.QMessageBox.critical(None, "OpenGL hellogl",
+    QtGui.QMessageBox.critical(None, "OpenGL textures",
                             "PyOpenGL must be installed to run this example.",
                             QtGui.QMessageBox.Ok | QtGui.QMessageBox.Default,
                             QtGui.QMessageBox.NoButton)
     sys.exit(1)
 
-class Window(QtGui.QWidget):
-    def __init__(self, parent=None):
-        QtGui.QWidget.__init__(self, parent)
-
-        self.glWidget = GLWidget(self)
-
-        mainLayout = QtGui.QHBoxLayout()
-        mainLayout.addWidget(self.glWidget)
-        self.setLayout(mainLayout)
-        self.setWindowTitle(self.tr("Coverflow"))
-
 class GLWidget(QtOpenGL.QGLWidget):
+    sharedObject = 0
+    refCount = 0
+
     coords = (
         ( ( +1, -1, -1 ), ( -1, -1, -1 ), ( -1, +1, -1 ), ( +1, +1, -1 ) ),
         ( ( +1, +1, -1 ), ( -1, +1, -1 ), ( -1, +1, +1 ), ( +1, +1, +1 ) ),
@@ -34,16 +24,29 @@ class GLWidget(QtOpenGL.QGLWidget):
         ( ( -1, -1, +1 ), ( +1, -1, +1 ), ( +1, +1, +1 ), ( -1, +1, +1 ) )
     )
 
-    def __init__(self, parent=None):
-        QtOpenGL.QGLWidget.__init__(self, parent)
-        self.clearColor = QtCore.Qt.red
-        self.xRot = 45
-        self.yRot = 45
-        self.zRot = 45
-        self.obj = None
-        self.textures = []
-        # self.clearColor = QtGui.QColor()
+    clicked = QtCore.Signal()
+
+    def __init__(self, parent, shareWidget):
+        QtOpenGL.QGLWidget.__init__(self, parent, shareWidget)
+
+        # self.clearColor = QtCore.Qt.black
+        self.xRot = 0
+        self.yRot = 0
+        self.zRot = 0
+        self.clearColor = QtGui.QColor()
         self.lastPos = QtCore.QPoint()
+
+    def freeGLResources(self):
+        GLWidget.refCount -= 1
+        if GLWidget.refCount == 0:
+            self.makeCurrent()
+            glDeleteLists(self.__class__.sharedObject, 1)
+
+    def minimumSizeHint(self):
+        return QtCore.QSize(50, 50)
+
+    def sizeHint(self):
+        return QtCore.QSize(200, 200)
 
     def rotateBy(self, xAngle, yAngle, zAngle):
         self.xRot = (self.xRot + xAngle) % 5760
@@ -51,18 +54,41 @@ class GLWidget(QtOpenGL.QGLWidget):
         self.zRot = (self.zRot + zAngle) % 5760
         self.updateGL()
 
-    def minimumSizeHing(self):
-        return QtCore.QSize(100, 50)
-
-    def rotateBy(self, xAngle, yAngle, zAngle):
-        pass
-
     def setClearColor(self, color):
         self.clearColor = color
         self.updateGL()
 
-    def sizeHint(self):
-        return QtCore.QSize(800, 400)
+    def initializeGL(self):
+        if not GLWidget.sharedObject:
+            self.textures = []
+            for i in range(6):
+                self.textures.append(self.bindTexture(QtGui.QPixmap("images/side%d.png" % (i + 1))))
+            print self.textures
+            GLWidget.sharedObject = self.makeObject()
+        GLWidget.refCount += 1
+
+        glEnable(GL_DEPTH_TEST)
+        glEnable(GL_CULL_FACE)
+        glEnable(GL_TEXTURE_2D)
+
+    def paintGL(self):
+        self.qglClearColor(self.clearColor)
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
+        glLoadIdentity()
+        glTranslated(0.0, 0.0, -10.0)
+        glRotated(self.xRot / 16.0, 1.0, 0.0, 0.0)
+        glRotated(self.yRot / 16.0, 0.0, 1.0, 0.0)
+        glRotated(self.zRot / 16.0, 0.0, 0.0, 1.0)
+        glCallList(GLWidget.sharedObject)
+
+    def resizeGL(self, width, height):
+        side = min(width, height)
+        glViewport((width - side) / 2, (height - side) / 2, side, side)
+
+        glMatrixMode(GL_PROJECTION)
+        glLoadIdentity()
+        glOrtho(-0.5, +0.5, +0.5, -0.5, 4.0, 15.0)
+        glMatrixMode(GL_MODELVIEW)
 
     def mousePressEvent(self, event):
         self.lastPos = QtCore.QPoint(event.pos())
@@ -78,36 +104,8 @@ class GLWidget(QtOpenGL.QGLWidget):
 
         self.lastPos = QtCore.QPoint(event.pos())
 
-    def initializeGL(self):
-        if not self.obj:
-            self.textures = []
-            for i in range(6):
-                self.textures.append(self.bindTexture(QtGui.QPixmap("images/side%d.png" % (i + 1))))
-            print self.textures
-            self.obj = self.makeObject()
-
-        glShadeModel(GL_FLAT)
-        glEnable(GL_DEPTH_TEST)
-        glEnable(GL_CULL_FACE)
-
-    def paintGL(self):
-        self.qglClearColor(self.clearColor)
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
-        glLoadIdentity()
-        glTranslated(0.0, 0.0, -10.0)
-        glRotated(self.xRot / 16.0, 1.0, 0.0, 0.0)
-        glRotated(self.yRot / 16.0, 0.0, 1.0, 0.0)
-        glRotated(self.zRot / 16.0, 0.0, 0.0, 1.0)
-        glCallList(self.obj)
-
-    def resizeGL(self, width, height):
-        side = min(width, height)
-        glViewport((width - side) / 2, (height - side) / 2, side, side)
-
-        glMatrixMode(GL_PROJECTION)
-        glLoadIdentity()
-        glOrtho(-0.5, +0.5, +0.5, -0.5, 4.0, 15.0)
-        glMatrixMode(GL_MODELVIEW)
+    def mouseReleaseEvent(self, event):
+        self.clicked.emit()
 
     def makeObject(self):
         dlist = glGenLists(1)
@@ -124,12 +122,62 @@ class GLWidget(QtOpenGL.QGLWidget):
                 glVertex3d(0.2 * GLWidget.coords[i][j][0],
                            0.2 * GLWidget.coords[i][j][1],
                            0.2 * GLWidget.coords[i][j][2])
+
             glEnd()
 
         glEndList()
         return dlist
 
-if __name__ == '__main__':
+
+class Window(QtGui.QWidget):
+    NumRows = 2
+    NumColumns = 3
+
+    def __init__(self, parent=None):
+        QtGui.QWidget.__init__(self, parent)
+
+        mainLayout = QtGui.QGridLayout()
+        self.glWidgets = []
+
+        for i in range(Window.NumRows):
+            self.glWidgets.append([])
+            for j in range(Window.NumColumns):
+                self.glWidgets[i].append(None)
+
+        for i in range(Window.NumRows):
+            for j in range(Window.NumColumns):
+                clearColor = QtGui.QColor()
+                clearColor.setHsv(((i * Window.NumColumns) + j) * 255
+                                  / (Window.NumRows * Window.NumColumns - 1),
+                                  255, 63)
+
+                self.glWidgets[i][j] = GLWidget(self, self.glWidgets[0][0])
+                self.glWidgets[i][j].setClearColor(clearColor)
+                self.glWidgets[i][j].rotateBy(+42 * 16, +42 * 16, -21 * 16)
+                mainLayout.addWidget(self.glWidgets[i][j], i, j)
+
+                self.glWidgets[i][j].clicked.connect(self.setCurrentGlWidget)
+                QtGui.qApp.lastWindowClosed.connect(self.glWidgets[i][j].freeGLResources)
+
+        self.setLayout(mainLayout)
+
+        self.currentGlWidget = self.glWidgets[0][0]
+
+        timer = QtCore.QTimer(self)
+        timer.timeout.connect(self.rotateOneStep)
+        timer.start(20)
+
+        self.setWindowTitle(self.tr("Textures"))
+
+    def setCurrentGlWidget(self):
+        self.currentGlWidget = self.sender()
+
+    def rotateOneStep(self):
+        if self.currentGlWidget:
+            self.currentGlWidget.rotateBy(+2 * 16, +2 * 16, -1 * 16)
+
+
+if __name__ == "__main__":
     app = QtGui.QApplication(sys.argv)
     window = Window()
     window.show()
