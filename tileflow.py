@@ -1,5 +1,5 @@
-import sys
 import math
+import sys
 from PySide import QtCore, QtGui, QtOpenGL
 
 try:
@@ -11,6 +11,7 @@ except ImportError:
                             QtGui.QMessageBox.Ok | QtGui.QMessageBox.Default,
                             QtGui.QMessageBox.NoButton)
     sys.exit(1)
+
 
 class TileflowWidget(QtOpenGL.QGLWidget):
 
@@ -28,7 +29,6 @@ class TileflowWidget(QtOpenGL.QGLWidget):
         self.clearColor = QtCore.Qt.black
         self.lastPos = QtCore.QPoint()
         self.res_list = res_list
-        print self.res_list
         self.tiles = []
         self.max = 6
         self.offset = 3
@@ -38,12 +38,11 @@ class TileflowWidget(QtOpenGL.QGLWidget):
         timer.timeout.connect(self.focusTile)
         timer.start(20)
 
-
     def minimumSizeHint(self):
         return QtCore.QSize(533, 270)
+
     def sizeHint(self):
         return QtCore.QSize(533, 270)
-
 
     def setClearColor(self, color):
         self.clearColor = color
@@ -187,24 +186,7 @@ class TileflowWidget(QtOpenGL.QGLWidget):
         GL.glCallList(self.first_tile + position)
         GL.glPopMatrix()
 
+
 class Tile:
     def __init__(self, texture):
         self.texture = texture
-
-class Window(QtGui.QWidget):
-
-    def __init__(self, parent=None):
-        QtGui.QWidget.__init__(self, parent)
-
-        mainLayout = QtGui.QHBoxLayout()
-        res_list = ["images/side" + str(ind + 1) + ".png" for ind in range(6)]
-        self.glWidget = TileflowWidget(self, res_list)
-        mainLayout.addWidget(self.glWidget)
-        self.setLayout(mainLayout)
-        self.setWindowTitle(self.tr("Tileflow"))
-
-if __name__ == "__main__":
-    app = QtGui.QApplication(sys.argv)
-    window = Window()
-    window.show()
-    sys.exit(app.exec_())
