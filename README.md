@@ -6,4 +6,4 @@ Dependencies:
 * PyOpenGL
 * OpenGL
 
-![screenshot](https://github.com/yifange/tileflow/blob/master/screenshot.png)
+![screenshot](https://raw.github.com/yifange/tileflow/master/screenshot.png)
