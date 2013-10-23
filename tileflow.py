@@ -153,7 +153,7 @@ class TileflowWidget(QtOpenGL.QGLWidget):
 
     def mouseMoveEvent(self, event):
         dx = event.x() - self.lastPos.x()
-        offset = self.offset + float(dx) * 6 / (self.width * 0.6)
+        offset = self.offset - float(dx) * 6 / (self.width * 0.6)
         if offset < 0:
             self.offset = 0
         elif offset > len(self.res_list) - 1:
