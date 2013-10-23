@@ -7,16 +7,17 @@ from OpenGL import GLU, GL
 class TileflowWidget(QtOpenGL.QGLWidget):
 
     SCALE = 0.7
-    SPREAD_IMAGE = 0.14
-    FLANK_SPREAD = 0.4
+    SPREAD_IMAGE = 0.64
+    FLANK_SPREAD = 0.2
     VISIBLE_TILES = 10
-    DIRECTION = 1
+    DIRECTION = -1
 
 
     def __init__(self, parent, res_list):
         QtOpenGL.QGLWidget.__init__(self, parent)
 
         self.width = 0
+        self.height = 0
         self.clearColor = QtCore.Qt.black
         self.lastPos = QtCore.QPoint()
         self.res_list = res_list
@@ -63,22 +64,22 @@ class TileflowWidget(QtOpenGL.QGLWidget):
             GL.glVertex3d(1, 1, 0)
             GL.glEnd()
 
-            GL.glTranslatef(0, -2.0, 0)
-            GL.glScalef(1, -1, 1)
-            GL.glColor4f(1, 1, 1, 0.5)
+            # GL.glTranslatef(0, -2.0, 0)
+            # GL.glScalef(1, -1, 1)
+            # GL.glColor4f(1, 1, 1, 0.5)
 
-            GL.glBegin(GL.GL_QUADS)
-            GL.glTexCoord2d(1, 0)
-            GL.glVertex3d(1, -1, 0)
-            GL.glTexCoord2d(0, 0)
-            GL.glVertex3d(-1, -1, 0)
-            GL.glTexCoord2d(0, 1)
-            GL.glVertex3d(-1, 1, 0)
-            GL.glTexCoord2d(1, 1)
-            GL.glVertex3d(1, 1, 0)
-            GL.glEnd()
+            # GL.glBegin(GL.GL_QUADS)
+            # GL.glTexCoord2d(1, 0)
+            # GL.glVertex3d(1, -1, 0)
+            # GL.glTexCoord2d(0, 0)
+            # GL.glVertex3d(-1, -1, 0)
+            # GL.glTexCoord2d(0, 1)
+            # GL.glVertex3d(-1, 1, 0)
+            # GL.glTexCoord2d(1, 1)
+            # GL.glVertex3d(1, 1, 0)
+            # GL.glEnd()
 
-            GL.glColor4f(1, 1, 1, 1)
+            # GL.glColor4f(1, 1, 1, 1)
 
             GL.glEndList()
 
@@ -128,6 +129,7 @@ class TileflowWidget(QtOpenGL.QGLWidget):
 
     def resizeGL(self, width, height):
         self.width = width
+        self.height = height
         imagew = width * 0.45 / TileflowWidget.SCALE / 2.0
         imageh = height * 0.45 / TileflowWidget.SCALE / 2.0
 
@@ -142,8 +144,8 @@ class TileflowWidget(QtOpenGL.QGLWidget):
         self.mouseDown = True
 
     def mouseMoveEvent(self, event):
-        dx = event.x() - self.lastPos.x()
-        offset = self.offset - float(dx) * 6 / (self.width * 0.6)
+        dy = event.y() - self.lastPos.y()
+        offset = self.offset + float(dy) * 6 / (self.height)
         if offset < 0:
             self.offset = 0
         elif offset > len(self.res_list) - 1:
@@ -166,12 +168,12 @@ class TileflowWidget(QtOpenGL.QGLWidget):
         elif (f < -TileflowWidget.FLANK_SPREAD):
             f = -TileflowWidget.FLANK_SPREAD
 
-        matrix[3] = -1 * TileflowWidget.DIRECTION * f
+        matrix[7] = -1 * TileflowWidget.DIRECTION * f
         matrix[0] = 1 - abs(f)
         scale = 0.38 * matrix[0]
         trans += f * 1
         GL.glPushMatrix()
-        GL.glTranslatef(trans, 0, 0)
+        GL.glTranslatef(0, trans, 0)
         GL.glScalef(scale, scale, 1.0)
         GL.glMultMatrixf(matrix)
         GL.glCallList(self.first_tile + position)
