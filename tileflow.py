@@ -46,6 +46,49 @@ class TileflowWidget(QtOpenGL.QGLWidget):
     def initializeGL(self):
         for res_path in self.res_list:
             self.tiles.append(Tile(self.bindTexture(QtGui.QPixmap(res_path))))
+        self.first_tile = self.makeTiles()
+
+    def makeTiles(self):
+        ind = list_start = GL.glGenLists(len(self.res_list))
+
+        for tile in self.tiles:
+            texture = tile.texture
+            GL.glNewList(ind, GL.GL_COMPILE)
+            GL.glBindTexture(GL.GL_TEXTURE_2D, tile.texture)
+
+            GL.glBegin(GL.GL_QUADS)
+            GL.glTexCoord2d(1, 0)
+            GL.glVertex3d(1, -1, 0)
+            GL.glTexCoord2d(0, 0)
+            GL.glVertex3d(-1, -1, 0)
+            GL.glTexCoord2d(0, 1)
+            GL.glVertex3d(-1, 1, 0)
+            GL.glTexCoord2d(1, 1)
+            GL.glVertex3d(1, 1, 0)
+            GL.glEnd()
+
+            GL.glTranslatef(0, -2.0, 0)
+            GL.glScalef(1, -1, 1)
+            GL.glColor4f(1, 1, 1, 0.5)
+
+            GL.glBegin(GL.GL_QUADS)
+            GL.glTexCoord2d(1, 0)
+            GL.glVertex3d(1, -1, 0)
+            GL.glTexCoord2d(0, 0)
+            GL.glVertex3d(-1, -1, 0)
+            GL.glTexCoord2d(0, 1)
+            GL.glVertex3d(-1, 1, 0)
+            GL.glTexCoord2d(1, 1)
+            GL.glVertex3d(1, 1, 0)
+            GL.glEnd()
+
+            GL.glColor4f(1, 1, 1, 1)
+
+            GL.glEndList()
+
+            ind += 1
+
+        return list_start
 
     def paintGL(self):
         GL.glMatrixMode(GL.GL_MODELVIEW)
@@ -125,39 +168,11 @@ class TileflowWidget(QtOpenGL.QGLWidget):
         matrix[0] = 1 - abs(f)
         sc = 0.38 * matrix[0]
         trans += f * 1
-
         GL.glPushMatrix()
-        GL.glBindTexture(GL.GL_TEXTURE_2D, tile.texture)
         GL.glTranslatef(trans, 0, 0)
         GL.glScalef(sc, sc, 1.0)
         GL.glMultMatrixf(matrix)
-
-        GL.glBegin(GL.GL_QUADS)
-        GL.glTexCoord2d(1, 0)
-        GL.glVertex3d(1, -1, 0)
-        GL.glTexCoord2d(0, 0)
-        GL.glVertex3d(-1, -1, 0)
-        GL.glTexCoord2d(0, 1)
-        GL.glVertex3d(-1, 1, 0)
-        GL.glTexCoord2d(1, 1)
-        GL.glVertex3d(1, 1, 0)
-        GL.glEnd()
-
-        GL.glTranslatef(0, -2.0, 0)
-        GL.glScalef(1, -1, 1)
-        GL.glColor4f(1, 1, 1, 0.5)
-        GL.glBegin(GL.GL_QUADS)
-        GL.glTexCoord2d(1, 0)
-        GL.glVertex3d(1, -1, 0)
-        GL.glTexCoord2d(0, 0)
-        GL.glVertex3d(-1, -1, 0)
-        GL.glTexCoord2d(0, 1)
-        GL.glVertex3d(-1, 1, 0)
-        GL.glTexCoord2d(1, 1)
-        GL.glVertex3d(1, 1, 0)
-        GL.glEnd()
-        GL.glColor4f(1, 1, 1, 1)
-
+        GL.glCallList(self.first_tile + position)
         GL.glPopMatrix()
 
 class Tile:
