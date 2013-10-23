@@ -11,7 +11,6 @@ class Window(QtGui.QWidget):
 
         mainLayout = QtGui.QHBoxLayout()
         res_list = sorted(glob.glob("images/*.png"))
-        # res_list = ["images/side" + str(ind + 1) + ".png" for ind in range(6)]
         self.glWidget = TileflowWidget(self, res_list)
         mainLayout.addWidget(self.glWidget)
         self.setLayout(mainLayout)

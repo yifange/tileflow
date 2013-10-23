@@ -1,16 +1,7 @@
 import math
 import sys
 from PySide import QtCore, QtGui, QtOpenGL
-
-try:
-    from OpenGL import GLU, GL
-except ImportError:
-    app = QtGui.QApplication(sys.argv)
-    QtGui.QMessageBox.critical(None, "OpenGL textures",
-                            "PyOpenGL must be installed to run this example.",
-                            QtGui.QMessageBox.Ok | QtGui.QMessageBox.Default,
-                            QtGui.QMessageBox.NoButton)
-    sys.exit(1)
+from OpenGL import GLU, GL
 
 
 class TileflowWidget(QtOpenGL.QGLWidget):
