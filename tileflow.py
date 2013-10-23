@@ -18,6 +18,7 @@ class TileflowWidget(QtOpenGL.QGLWidget):
     SPREAD_IMAGE = 0.14
     FLANK_SPREAD = 0.4
     VISIBLE_TILES = 10
+    DIRECTION = 1
 
 
     def __init__(self, parent, res_list):
@@ -31,7 +32,12 @@ class TileflowWidget(QtOpenGL.QGLWidget):
         self.tiles = []
         self.max = 6
         self.offset = 3
-        self.width = 533
+        self.mouseDown = False
+        # self.width = 533
+        timer = QtCore.QTimer(self)
+        timer.timeout.connect(self.focusTile)
+        timer.start(20)
+
 
     def minimumSizeHint(self):
         return QtCore.QSize(533, 270)
@@ -116,13 +122,19 @@ class TileflowWidget(QtOpenGL.QGLWidget):
         end_pos = mid + TileflowWidget.VISIBLE_TILES
         if end_pos > len(self.res_list):
             end_pos = len(self.res_list)
-        for i in range(start_pos, mid):
+        for i in range(start_pos, mid)[::TileflowWidget.DIRECTION]:
             self.drawTile(i, i - offset, self.tiles[i])
-        for i in range(mid, end_pos)[::-1]:
+        for i in range(mid, end_pos)[::-TileflowWidget.DIRECTION]:
             self.drawTile(i, i - offset, self.tiles[i])
 
         GL.glPopMatrix()
 
+    def focusTile(self):
+        if not self.mouseDown:
+            target = math.floor(self.offset + 0.5)
+            if not abs(target - self.offset) <= 0.01:
+                self.offset += (target - self.offset) / 3
+                self.updateGL()
 
     def resizeGL(self, width, height):
         self.width = width
@@ -134,26 +146,26 @@ class TileflowWidget(QtOpenGL.QGLWidget):
         GL.glMatrixMode(GL.GL_PROJECTION)
         GL.glLoadIdentity()
         GL.glOrtho(-ratio * TileflowWidget.SCALE, ratio * TileflowWidget.SCALE, -1 * TileflowWidget.SCALE, 1 * TileflowWidget.SCALE, 1, 3)
-        self.verticesBuffer = [
-            -ratio * TileflowWidget.SCALE, -TileflowWidget.SCALE, 0,
-            ratio * TileflowWidget.SCALE, -TileflowWidget.SCALE, 0,
-            -ratio * TileflowWidget.SCALE, TileflowWidget.SCALE, 0,
-            ratio * TileflowWidget.SCALE, TileflowWidget.SCALE, 0
-        ]
 
     def mousePressEvent(self, event):
         self.lastPos = QtCore.QPoint(event.pos())
+        self.mouseDown = True
 
     def mouseMoveEvent(self, event):
         dx = event.x() - self.lastPos.x()
-        if event.buttons() & QtCore.Qt.LeftButton:
-            self.offset += float(dx) * 6 / (self.width * 0.6)
-            self.updateGL()
+        offset = self.offset + float(dx) * 6 / (self.width * 0.6)
+        if offset < 0:
+            self.offset = 0
+        elif offset > len(self.res_list) - 1:
+            self.offset = len(self.res_list) - 1
+        else:
+            self.offset = offset
+        self.updateGL()
 
         self.lastPos = QtCore.QPoint(event.pos())
 
     def mouseReleaseEvent(self, event):
-        pass
+        self.mouseDown = False
 
     def drawTile(self, position, offset, tile):
         matrix = [1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0]
@@ -164,13 +176,13 @@ class TileflowWidget(QtOpenGL.QGLWidget):
         elif (f < -TileflowWidget.FLANK_SPREAD):
             f = -TileflowWidget.FLANK_SPREAD
 
-        matrix[3] = -f
+        matrix[3] = -1 * TileflowWidget.DIRECTION * f
         matrix[0] = 1 - abs(f)
-        sc = 0.38 * matrix[0]
+        scale = 0.38 * matrix[0]
         trans += f * 1
         GL.glPushMatrix()
         GL.glTranslatef(trans, 0, 0)
-        GL.glScalef(sc, sc, 1.0)
+        GL.glScalef(scale, scale, 1.0)
         GL.glMultMatrixf(matrix)
         GL.glCallList(self.first_tile + position)
         GL.glPopMatrix()
