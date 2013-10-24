@@ -7,3 +7,4 @@ Dependencies:
 * OpenGL
 
 ![screenshot](https://raw.github.com/yifange/tileflow/master/screenshot.png)
+![screenshot](https://raw.github.com/yifange/tileflow/vertical/screenshot-vertical.png)
